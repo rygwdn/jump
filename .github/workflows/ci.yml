@@ -52,6 +52,7 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             artifact: world-nav-linux-x86_64-musl
+            extra_flags: --features git2/vendored-openssl
 
           - name: macos-aarch64
             os: macos-latest
@@ -76,7 +77,7 @@ jobs:
         run: sudo apt-get install -y musl-tools
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} ${{ matrix.extra_flags }}
 
       - name: Rename binary
         run: cp target/${{ matrix.target }}/release/world-nav ${{ matrix.artifact }}

@@ -17,7 +17,7 @@ pub mod test_utils;
 
 pub use candidate::Candidate;
 pub use candidate_provider::CandidateProvider;
-pub use config::{ConfigManager, WorldNavConfig};
+pub use config::{ConfigManager, JumprConfig};
 pub use frecency::FrecencyDb;
 pub use navigator::WorktreeNavigator;
 pub use path_shortener::{shorten_path, ShortPath, ShortPathPart};

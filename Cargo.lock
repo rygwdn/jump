@@ -1001,6 +1001,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "jumpr"
+version = "0.5.2"
+dependencies = [
+ "atty",
+ "clap",
+ "config",
+ "crossbeam-channel",
+ "dirs",
+ "git2",
+ "handlebars",
+ "rayon",
+ "regex",
+ "rusqlite",
+ "semver",
+ "serde",
+ "serde_json",
+ "skim",
+ "tempfile",
+ "test-case",
+ "toml",
+ "walkdir",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2293,30 +2317,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f42320e61fe2cfd34354ecb597f86f413484a798ba44a8ca1165c58d42da6c1"
 dependencies = [
  "bitflags 2.9.1",
-]
-
-[[package]]
-name = "world-nav"
-version = "0.5.2"
-dependencies = [
- "atty",
- "clap",
- "config",
- "crossbeam-channel",
- "dirs",
- "git2",
- "handlebars",
- "rayon",
- "regex",
- "rusqlite",
- "semver",
- "serde",
- "serde_json",
- "skim",
- "tempfile",
- "test-case",
- "toml",
- "walkdir",
 ]
 
 [[package]]

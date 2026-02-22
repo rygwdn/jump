@@ -1,6 +1,6 @@
 use clap::{ArgMatches, Command};
 use serde_json;
-use world_nav::config::ConfigManager;
+use jumpr::config::ConfigManager;
 
 pub fn command() -> Command {
     Command::new("config")

@@ -1,13 +1,13 @@
-# World-nav zsh integration
+# jumpr zsh integration
 
 {{#if init_frecency}}
 # Hook to record directory visits (when PWD changes)
-function __world_nav_visit() {
+function __jumpr_visit() {
     \command {{exe_path}} update-frecency --visit -- "$PWD" 2>/dev/null
 }
 
 # Hook to update access time (when prompt is rendered)
-function __world_nav_access() {
+function __jumpr_access() {
     \command {{exe_path}} update-frecency -- "$PWD" 2>/dev/null
 }
 
@@ -15,19 +15,19 @@ function __world_nav_access() {
 \builtin typeset -ga precmd_functions
 \builtin typeset -ga chpwd_functions
 
-# Remove any existing world-nav hooks
+# Remove any existing jumpr hooks
 # shellcheck disable=SC2034,SC2296
-precmd_functions=("${(@)precmd_functions:#__world_nav_access}")
+precmd_functions=("${(@)precmd_functions:#__jumpr_access}")
 # shellcheck disable=SC2034,SC2296
-chpwd_functions=("${(@)chpwd_functions:#__world_nav_visit}")
+chpwd_functions=("${(@)chpwd_functions:#__jumpr_visit}")
 
 # Add our hooks
-precmd_functions+=(__world_nav_access)
-chpwd_functions+=(__world_nav_visit)
+precmd_functions+=(__jumpr_access)
+chpwd_functions+=(__jumpr_visit)
 {{/if}}
 
 {{#if init_segments}}
-# Full featured path segments with world-nav shortpath
+# Full featured path segments with jumpr shortpath
 function update_path_segments() {
     local segments=("${(@f)$({{exe_path}} shortpath -s prefix,shortened,normal,colored "$PWD" 2>/dev/null)}")
     export WORKTREE_PATH_PREFIX="$segments[1]"

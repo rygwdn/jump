@@ -4,8 +4,8 @@ use clap::{Arg, ArgAction, Command};
 use std::env;
 use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
-use world_nav::shorten_path;
-use world_nav::ShortPathPart::*;
+use jumpr::shorten_path;
+use jumpr::ShortPathPart::*;
 
 pub fn command() -> Command {
     Command::new("shortpath")

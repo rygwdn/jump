@@ -12,14 +12,14 @@ use std::process;
 fn default_frecency_db_path() -> String {
     dirs::data_dir()
         .unwrap_or_else(|| expand_path("~/.local/share"))
-        .join("world-nav")
+        .join("jumpr")
         .join("frecency.db")
         .to_string_lossy()
         .to_string()
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct WorldNavConfig {
+pub struct JumprConfig {
     /// Path to world trees directory
     pub world_path: Option<String>,
     /// List of source directories to scan for repositories
@@ -30,9 +30,9 @@ pub struct WorldNavConfig {
     pub frecency_db_path: String,
 }
 
-impl Default for WorldNavConfig {
+impl Default for JumprConfig {
     fn default() -> Self {
-        WorldNavConfig {
+        JumprConfig {
             world_path: Some("~/world/trees".to_string()),
             src_paths: vec!["~/src".to_string()],
             depth_limit: Some(3),
@@ -59,7 +59,7 @@ impl ConfigManager {
         }
 
         // Create default config
-        let default_config = WorldNavConfig::default();
+        let default_config = JumprConfig::default();
         let json = serde_json::to_string_pretty(&default_config)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
@@ -69,15 +69,15 @@ impl ConfigManager {
         Ok(())
     }
 
-    /// Loads the full world-nav configuration
-    pub fn load_config() -> WorldNavConfig {
+    /// Loads the full jumpr configuration
+    pub fn load_config() -> JumprConfig {
         Self::load_config_with_options(true)
     }
 
-    /// Loads the full world-nav configuration with options
-    pub fn load_config_with_options(create_if_missing: bool) -> WorldNavConfig {
+    /// Loads the full jumpr configuration with options
+    pub fn load_config_with_options(create_if_missing: bool) -> JumprConfig {
         let config_path = Self::get_config_path();
-        let default_config = WorldNavConfig::default();
+        let default_config = JumprConfig::default();
 
         // Create default config file if it doesn't exist
         if create_if_missing && !config_path.exists() {
@@ -92,7 +92,7 @@ impl ConfigManager {
 
         // Build configuration from config file if it exists
         let settings = Config::builder()
-            // Set defaults from WorldNavConfig::default()
+            // Set defaults from JumprConfig::default()
             .set_default("world_path", default_config.world_path.clone())
             .expect("Failed to set default world_path")
             .set_default("src_paths", default_config.src_paths.clone())
@@ -107,7 +107,7 @@ impl ConfigManager {
 
         match settings {
             Ok(config) => {
-                match config.try_deserialize::<WorldNavConfig>() {
+                match config.try_deserialize::<JumprConfig>() {
                     Ok(nav_config) => {
                         // Validate that paths are not empty strings
                         if nav_config.src_paths.iter().any(|p| p.trim().is_empty()) {
@@ -136,12 +136,12 @@ impl ConfigManager {
     /// Gets the path to the configuration file
     pub fn get_config_path() -> PathBuf {
         // Check for environment variable override
-        if let Ok(config_path) = std::env::var("WORLD_NAV_CONFIG") {
+        if let Ok(config_path) = std::env::var("JUMPR_CONFIG") {
             return PathBuf::from(config_path);
         }
 
         let config_dir = dirs::config_dir().unwrap_or_else(|| expand_path("~/.config"));
 
-        config_dir.join("world-nav").join("config.json")
+        config_dir.join("jumpr").join("config.json")
     }
 }

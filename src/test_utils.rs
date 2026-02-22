@@ -163,14 +163,14 @@ pub mod test_env {
             fs::write(&self.config_path, config_content).expect("Failed to write config");
         }
 
-        /// Sets the WORLD_NAV_CONFIG environment variable to point to this test config
+        /// Sets the JUMPR_CONFIG environment variable to point to this test config
         pub fn set_config_env(&self) {
-            std::env::set_var("WORLD_NAV_CONFIG", self.config_path.to_str().unwrap());
+            std::env::set_var("JUMPR_CONFIG", self.config_path.to_str().unwrap());
         }
 
         /// Cleans up the environment variable
         pub fn cleanup(&self) {
-            std::env::remove_var("WORLD_NAV_CONFIG");
+            std::env::remove_var("JUMPR_CONFIG");
         }
     }
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-World-nav is a Rust CLI tool for worktree navigation and path shortening utilities. It provides:
+jumpr is a Rust CLI tool for worktree navigation and path shortening utilities. It provides:
 - Fast directory jumping with frecency-based ranking
 - Path shortening for shell prompts
 - Shell integration for Fish and Zsh
@@ -25,7 +25,7 @@ The install script will:
 3. Run linter checks (`cargo clippy -- -D warnings`)
 4. Run all tests (`cargo test`)
 5. Build the release binary
-6. Install to `~/.cargo/bin/world-nav`
+6. Install to `~/.cargo/bin/jumpr`
 
 ## Development Commands
 
@@ -86,14 +86,14 @@ To integrate with your shell, add to your config:
 ```fish
 # Fish shell (~/.config/fish/config.fish)
 if status is-interactive
-    which world-nav &>/dev/null && world-nav shell-init --shell fish --require-version ~/.config/world-nav/Cargo.toml | source
+    which jumpr &>/dev/null && jumpr shell-init --shell fish --require-version ~/.config/jumpr/Cargo.toml | source
 end
 ```
 
 ```zsh
 # Zsh shell (~/.zshrc)
-if [[ $- == *i* ]] && command -v world-nav &>/dev/null; then
-    eval "$(world-nav shell-init --shell zsh --require-version ~/.config/world-nav/Cargo.toml)"
+if [[ $- == *i* ]] && command -v jumpr &>/dev/null; then
+    eval "$(jumpr shell-init --shell zsh --require-version ~/.config/jumpr/Cargo.toml)"
 fi
 ```
 

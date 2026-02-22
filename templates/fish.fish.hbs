@@ -1,12 +1,12 @@
 {{#if init_frecency}}
 # Hook to record directory visits (when PWD changes)
-function __world_nav_visit --on-variable PWD
+function __jumpr_visit --on-variable PWD
     test -z "$fish_private_mode"
     and command {{exe_path}} update-frecency --visit -- "$PWD" 2>/dev/null
 end
 
 # Hook to update access time (when prompt is rendered)
-function __world_nav_access --on-event fish_prompt
+function __jumpr_access --on-event fish_prompt
     test -z "$fish_private_mode"
     and command {{exe_path}} update-frecency -- "$PWD" 2>/dev/null
 end

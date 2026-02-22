@@ -46,18 +46,18 @@ jobs:
           - name: linux-x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: world-nav-linux-x86_64
+            artifact: jumpr-linux-x86_64
 
           - name: linux-x86_64-musl
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            artifact: world-nav-linux-x86_64-musl
+            artifact: jumpr-linux-x86_64-musl
             extra_flags: --features git2/vendored-openssl
 
           - name: macos-aarch64
             os: macos-latest
             target: aarch64-apple-darwin
-            artifact: world-nav-macos-aarch64
+            artifact: jumpr-macos-aarch64
 
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +80,7 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }} ${{ matrix.extra_flags }}
 
       - name: Rename binary
-        run: cp target/${{ matrix.target }}/release/world-nav ${{ matrix.artifact }}
+        run: cp target/${{ matrix.target }}/release/jumpr ${{ matrix.artifact }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -104,7 +104,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: world-nav-*
+          files: jumpr-*
           generate_release_notes: true
 
       - name: Update development release
@@ -114,5 +114,5 @@ jobs:
           tag_name: dev
           name: Development (latest main)
           prerelease: true
-          files: world-nav-*
+          files: jumpr-*
           body: "Latest build from main branch. Updated automatically on each push."

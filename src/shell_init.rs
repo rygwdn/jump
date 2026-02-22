@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn test_shell_init_commands() {
         // Test fish shell init with frecency enabled (default)
-        let exe_path = "/usr/local/bin/world-nav";
+        let exe_path = "/usr/local/bin/jumpr";
         let function_name = "j";
 
         let output =
@@ -137,19 +137,19 @@ mod tests {
 
     #[test]
     fn test_get_shell_function() {
-        let output = get_shell_function("fish", "test_func", "/bin/world-nav", "--list", "cd");
+        let output = get_shell_function("fish", "test_func", "/bin/jumpr", "--list", "cd");
         assert!(output.contains("function test_func"));
-        assert!(output.contains("/bin/world-nav --list"));
+        assert!(output.contains("/bin/jumpr --list"));
         assert!(output.contains("cd $paths"));
 
-        let output = get_shell_function("bash", "test_func", "/bin/world-nav", "--list", "cd");
+        let output = get_shell_function("bash", "test_func", "/bin/jumpr", "--list", "cd");
         assert!(output.contains("test_func ()"));
-        assert!(output.contains("/bin/world-nav --list"));
+        assert!(output.contains("/bin/jumpr --list"));
         assert!(output.contains("cd $paths"));
 
-        let output = get_shell_function("zsh", "test_func", "/bin/world-nav", "--list", "cd");
+        let output = get_shell_function("zsh", "test_func", "/bin/jumpr", "--list", "cd");
         assert!(output.contains("test_func ()"));
-        assert!(output.contains("/bin/world-nav --list"));
+        assert!(output.contains("/bin/jumpr --list"));
         assert!(output.contains("cd ${paths[@]}"));
     }
 
@@ -157,7 +157,7 @@ mod tests {
     fn test_unsupported_shell() {
         let result = get_shell_init(
             "powershell",
-            "/bin/world-nav",
+            "/bin/jumpr",
             Some("j"),
             &NAVIGATION_CONFIG,
         );

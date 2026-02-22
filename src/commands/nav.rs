@@ -1,5 +1,5 @@
 use clap::{Arg, ArgAction, Command};
-use world_nav::WorktreeNavigator;
+use jumpr::WorktreeNavigator;
 
 pub fn command() -> Command {
     Command::new("nav")

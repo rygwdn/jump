@@ -1,4 +1,4 @@
-# world-nav
+# jumpr
 
 Worktree navigation and path shortening for Fish and Zsh. Uses frecency-based ranking to jump between git repositories quickly.
 
@@ -18,11 +18,11 @@ Download the appropriate binary from the [releases page](https://github.com/rygw
 
 | Platform | Binary |
 |---|---|
-| Linux x86_64 | `world-nav-linux-x86_64` |
-| Linux x86_64 (Alpine/musl) | `world-nav-linux-x86_64-musl` |
-| macOS Apple Silicon | `world-nav-macos-aarch64` |
+| Linux x86_64 | `jumpr-linux-x86_64` |
+| Linux x86_64 (Alpine/musl) | `jumpr-linux-x86_64-musl` |
+| macOS Apple Silicon | `jumpr-macos-aarch64` |
 
-Place it somewhere on your `$PATH` (e.g. `~/.local/bin/world-nav`).
+Place it somewhere on your `$PATH` (e.g. `~/.local/bin/jumpr`).
 
 ### From source
 
@@ -30,7 +30,7 @@ Place it somewhere on your `$PATH` (e.g. `~/.local/bin/world-nav`).
 ./install.sh
 ```
 
-Requires `rustup`. The script installs the correct toolchain, runs fmt/clippy/tests, then installs the binary to `~/.cargo/bin/world-nav`.
+Requires `rustup`. The script installs the correct toolchain, runs fmt/clippy/tests, then installs the binary to `~/.cargo/bin/jumpr`.
 
 ## Shell integration
 
@@ -39,14 +39,14 @@ Add to your shell config, then restart your shell.
 **Fish** (`~/.config/fish/config.fish`):
 ```fish
 if status is-interactive
-    which world-nav &>/dev/null && world-nav shell-init --shell fish --require-version ~/.config/world-nav/Cargo.toml | source
+    which jumpr &>/dev/null && jumpr shell-init --shell fish --require-version ~/.config/jumpr/Cargo.toml | source
 end
 ```
 
 **Zsh** (`~/.zshrc`):
 ```zsh
-if [[ $- == *i* ]] && command -v world-nav &>/dev/null; then
-    eval "$(world-nav shell-init --shell zsh --require-version ~/.config/world-nav/Cargo.toml)"
+if [[ $- == *i* ]] && command -v jumpr &>/dev/null; then
+    eval "$(jumpr shell-init --shell zsh --require-version ~/.config/jumpr/Cargo.toml)"
 fi
 ```
 
@@ -60,38 +60,38 @@ This creates:
 
 Customize command names:
 ```bash
-world-nav shell-init --shell fish --navigate jump --code code-jump
+jumpr shell-init --shell fish --navigate jump --code code-jump
 ```
 
 Disable individual components:
 ```bash
-world-nav shell-init --shell fish --no-code --no-segments
+jumpr shell-init --shell fish --no-code --no-segments
 ```
 
 ## Configuration
 
-Default config: `~/.config/world-nav/config.toml`
-Override: `WORLD_NAV_CONFIG=/path/to/config.toml`
+Default config: `~/.config/jumpr/config.toml`
+Override: `JUMPR_CONFIG=/path/to/config.toml`
 
 ```toml
 world_path = "~/world/trees"     # worktree root (optional)
 src_paths = ["~/src"]            # directories scanned for git repos
 depth_limit = 3                  # how deep to scan
-frecency_db_path = "~/.local/share/world-nav/frecency.db"
+frecency_db_path = "~/.local/share/jumpr/frecency.db"
 ```
 
 View active config:
 ```bash
-world-nav config
+jumpr config
 ```
 
 ## Usage
 
 ```
-world-nav nav [--list] [--scores] [--filter] [--multi] [--height HEIGHT] [QUERY...]
-world-nav shortpath [--max-segments N] [--section SECTION] [--stdin] [PATH]
-world-nav shell-init --shell <fish|zsh> [OPTIONS]
-world-nav config
+jumpr nav [--list] [--scores] [--filter] [--multi] [--height HEIGHT] [QUERY...]
+jumpr shortpath [--max-segments N] [--section SECTION] [--stdin] [PATH]
+jumpr shell-init --shell <fish|zsh> [OPTIONS]
+jumpr config
 ```
 
 ### `nav`

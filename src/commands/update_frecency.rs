@@ -1,5 +1,5 @@
 use clap::Command;
-use world_nav::FrecencyDb;
+use jumpr::FrecencyDb;
 
 pub fn command() -> Command {
     Command::new("update-frecency")

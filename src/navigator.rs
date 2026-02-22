@@ -198,7 +198,7 @@ mod tests {
         use std::fs;
 
         // Ensure clean environment
-        std::env::remove_var("WORLD_NAV_CONFIG");
+        std::env::remove_var("JUMPR_CONFIG");
 
         // Create test environment
         let env = TestEnvironment::new();

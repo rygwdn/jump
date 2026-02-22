@@ -1,5 +1,5 @@
 [package]
-name = "world-nav"
+name = "jumpr"
 version = "0.5.2"
 edition = "2021"
 description = "Worktree navigation and path shortening utilities"
@@ -7,7 +7,7 @@ authors = ["Ryan Wooden"]
 rust-version = "1.89"
 
 [[bin]]
-name = "world-nav"
+name = "jumpr"
 path = "src/bin/main.rs"
 
 [dependencies]

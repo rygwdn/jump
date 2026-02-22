@@ -59,8 +59,8 @@ echo -e "${GREEN}✓ Tests passed${NC}"
 # echo -e "${GREEN}✓ Build successful${NC}"
 
 # Install the binary to cargo bin directory
-echo -e "${YELLOW}Installing world-nav...${NC}"
+echo -e "${YELLOW}Installing jumpr...${NC}"
 cargo install --path . --force
 
 echo -e "${GREEN}Installation complete!${NC}"
-echo "Binary installed to: $(which world-nav || echo "$HOME/.cargo/bin/world-nav")"
+echo "Binary installed to: $(which jumpr || echo "$HOME/.cargo/bin/jumpr")"

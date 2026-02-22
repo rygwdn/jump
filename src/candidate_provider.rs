@@ -106,16 +106,16 @@ mod tests {
 
     #[test]
     fn test_create_src_providers_with_multiple_paths() {
-        use crate::config::WorldNavConfig;
+        use crate::config::JumprConfig;
 
-        let config = WorldNavConfig {
+        let config = JumprConfig {
             src_paths: vec![
                 "/path/one".to_string(),
                 "/path/two".to_string(),
                 "~/projects".to_string(),
             ],
             depth_limit: Some(5),
-            ..WorldNavConfig::default()
+            ..JumprConfig::default()
         };
 
         // Test that we can create multiple providers (indirectly by testing config)
@@ -133,11 +133,11 @@ mod tests {
 
     #[test]
     fn test_create_src_providers_empty_paths() {
-        use crate::config::WorldNavConfig;
+        use crate::config::JumprConfig;
 
-        let config = WorldNavConfig {
+        let config = JumprConfig {
             src_paths: vec![],
-            ..WorldNavConfig::default()
+            ..JumprConfig::default()
         };
 
         // When src_paths is empty, should fall back to default behavior

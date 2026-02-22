@@ -137,7 +137,7 @@ fn check_version_compatibility(require_version: &str) -> bool {
 fn get_exe_path() -> String {
     match env::current_exe() {
         Ok(path) => path.display().to_string(),
-        Err(_) => "world-nav".to_string(),
+        Err(_) => "jumpr".to_string(),
     }
 }
 
@@ -208,7 +208,7 @@ pub fn handle(args: &ShellInitArgs) -> io::Result<()> {
         if !compatible {
             let current_version = env!("CARGO_PKG_VERSION");
             eprintln!(
-                "⚠️  world-nav version mismatch: installed v{current_version}, required {req_version}"
+                "⚠️  jumpr version mismatch: installed v{current_version}, required {req_version}"
             );
             eprintln!("⚠️  Run '{BUILD_SCRIPT_PATH}' to update");
         }

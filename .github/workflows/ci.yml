@@ -37,7 +37,7 @@ jobs:
   build:
     name: Build ${{ matrix.name }}
     needs: check
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -90,7 +90,7 @@ jobs:
   release:
     name: Create Release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -99,8 +99,19 @@ jobs:
         with:
           merge-multiple: true
 
-      - name: Create release
+      - name: Create versioned release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: world-nav-*
           generate_release_notes: true
+
+      - name: Update development release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          name: Development (latest main)
+          prerelease: true
+          files: world-nav-*
+          body: "Latest build from main branch. Updated automatically on each push."

@@ -12,6 +12,22 @@ Worktree navigation and path shortening for Fish and Zsh. Uses frecency-based ra
 
 ## Installation
 
+### Quick install (Linux x86_64, macOS Apple Silicon)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rygwdn/jump/main/get-jumpr.sh | sh
+```
+
+Installs the latest pre-built binary to `~/.local/bin/jumpr`. Options:
+
+```sh
+# Install a specific tagged release
+curl -fsSL https://raw.githubusercontent.com/rygwdn/jump/main/get-jumpr.sh | sh -s -- --release v0.5.2
+
+# Install to a custom directory
+curl -fsSL https://raw.githubusercontent.com/rygwdn/jump/main/get-jumpr.sh | sh -s -- --install-dir /usr/local/bin
+```
+
 ### From a release binary
 
 Download the appropriate binary from the [releases page](https://github.com/rygwdn/jump/releases):

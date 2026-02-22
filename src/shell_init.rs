@@ -155,12 +155,7 @@ mod tests {
 
     #[test]
     fn test_unsupported_shell() {
-        let result = get_shell_init(
-            "powershell",
-            "/bin/jumpr",
-            Some("j"),
-            &NAVIGATION_CONFIG,
-        );
+        let result = get_shell_init("powershell", "/bin/jumpr", Some("j"), &NAVIGATION_CONFIG);
         assert!(result.is_err());
         if let Err(err_msg) = result {
             assert!(err_msg.contains("Unsupported shell: powershell"));

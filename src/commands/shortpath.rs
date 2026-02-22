@@ -1,10 +1,10 @@
 #![allow(clippy::expect_used)]
 
 use clap::{Arg, ArgAction, Command};
-use std::env;
-use std::path::PathBuf;
 use jumpr::shorten_path;
 use jumpr::ShortPathPart::*;
+use std::env;
+use std::path::PathBuf;
 
 pub fn command() -> Command {
     Command::new("shortpath")

@@ -86,14 +86,14 @@ To integrate with your shell, add to your config:
 ```fish
 # Fish shell (~/.config/fish/config.fish)
 if status is-interactive
-    which world-nav &>/dev/null && world-nav shell-init --shell fish --require-version ~/dotfiles/world-nav/Cargo.toml | source
+    which world-nav &>/dev/null && world-nav shell-init --shell fish --require-version ~/.config/world-nav/Cargo.toml | source
 end
 ```
 
 ```zsh
 # Zsh shell (~/.zshrc)
 if [[ $- == *i* ]] && command -v world-nav &>/dev/null; then
-    eval "$(world-nav shell-init --shell zsh --require-version ~/dotfiles/world-nav/Cargo.toml)"
+    eval "$(world-nav shell-init --shell zsh --require-version ~/.config/world-nav/Cargo.toml)"
 fi
 ```
 

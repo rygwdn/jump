@@ -52,7 +52,6 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             artifact: jumpr-linux-x86_64-musl
-            extra_flags: --features git2/vendored-openssl
 
           - name: macos-aarch64
             os: macos-latest

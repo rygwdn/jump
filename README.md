@@ -10,6 +10,8 @@ Worktree navigation and path shortening for Fish and Zsh. Uses frecency-based ra
 - **Frecency tracking** — repos you visit often and recently rank higher
 - **Shell integration** — hooks for Fish and Zsh that update prompt variables automatically
 
+> **TODO:** The `j`/`jc` commands use an embedded [`skim`](https://github.com/lotabout/skim) fuzzy finder (~76 transitive crates). A future improvement would replace it with an external [`fzf`](https://github.com/junegunn/fzf) call to reduce compile-time dependencies.
+
 ## Installation
 
 ### Quick install (Linux x86_64, macOS Apple Silicon)

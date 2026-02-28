@@ -1,7 +1,4 @@
-#![allow(clippy::expect_used)]
-
 use crate::utils::expand_path;
-use config::{Config, File};
 use dirs;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -77,7 +74,6 @@ impl ConfigManager {
     /// Loads the full jumpr configuration with options
     pub fn load_config_with_options(create_if_missing: bool) -> JumprConfig {
         let config_path = Self::get_config_path();
-        let default_config = JumprConfig::default();
 
         // Create default config file if it doesn't exist
         if create_if_missing && !config_path.exists() {
@@ -90,44 +86,11 @@ impl ConfigManager {
             }
         }
 
-        // Build configuration from config file if it exists
-        let settings = Config::builder()
-            // Set defaults from JumprConfig::default()
-            .set_default("world_path", default_config.world_path.clone())
-            .expect("Failed to set default world_path")
-            .set_default("src_paths", default_config.src_paths.clone())
-            .expect("Failed to set default src_paths")
-            .set_default("depth_limit", default_config.depth_limit.map(|d| d as i64))
-            .expect("Failed to set default depth_limit")
-            .set_default("frecency_db_path", default_config.frecency_db_path.clone())
-            .expect("Failed to set default frecency_db_path")
-            // Add config file if it exists
-            .add_source(File::from(config_path.clone()).required(false))
-            .build();
-
-        match settings {
-            Ok(config) => {
-                match config.try_deserialize::<JumprConfig>() {
-                    Ok(nav_config) => {
-                        // Validate that paths are not empty strings
-                        if nav_config.src_paths.iter().any(|p| p.trim().is_empty()) {
-                            eprintln!("Error: Configuration contains empty source paths");
-                            eprintln!("Config file: {}", config_path.display());
-                            process::exit(1);
-                        }
-                        nav_config
-                    }
-                    Err(e) => {
-                        eprintln!("Error: Failed to parse configuration file");
-                        eprintln!("Config file: {}", config_path.display());
-                        eprintln!("Error details: {e}");
-                        process::exit(1);
-                    }
-                }
-            }
+        match try_load_config(&config_path) {
+            Ok(config) => config,
             Err(e) => {
-                eprintln!("Error: Failed to load configuration");
-                eprintln!("Error details: {e}");
+                eprintln!("Error: {e}");
+                eprintln!("Config file: {}", config_path.display());
                 process::exit(1);
             }
         }
@@ -144,4 +107,40 @@ impl ConfigManager {
 
         config_dir.join("jumpr").join("config.json")
     }
+}
+
+fn try_load_config(path: &PathBuf) -> Result<JumprConfig, String> {
+    let default_config = JumprConfig::default();
+
+    if !path.exists() {
+        return Ok(default_config);
+    }
+
+    let contents =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read configuration file: {e}"))?;
+
+    let file_value: serde_json::Value = serde_json::from_str(&contents)
+        .map_err(|e| format!("Failed to parse configuration file: {e}"))?;
+
+    // Start with defaults, then merge non-null values from file
+    let mut merged = serde_json::to_value(&default_config)
+        .map_err(|e| format!("Failed to serialize default config: {e}"))?;
+
+    if let (Some(base), Some(overrides)) = (merged.as_object_mut(), file_value.as_object()) {
+        for (key, value) in overrides {
+            if !value.is_null() {
+                base.insert(key.clone(), value.clone());
+            }
+        }
+    }
+
+    let config: JumprConfig = serde_json::from_value(merged)
+        .map_err(|e| format!("Failed to deserialize configuration: {e}"))?;
+
+    // Validate that paths are not empty strings
+    if config.src_paths.iter().any(|p| p.trim().is_empty()) {
+        return Err("Configuration contains empty source paths".to_string());
+    }
+
+    Ok(config)
 }

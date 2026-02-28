@@ -1,8 +1,5 @@
-use git2::Repository;
-use std::path::PathBuf;
-
-const WORLD_TREES_PATH: &str = "~/world/trees";
-const SRC_PATH: &str = "~/src";
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Utility function to expand paths with ~ notation
 pub fn expand_path(path: &str) -> PathBuf {
@@ -17,26 +14,42 @@ pub fn expand_path(path: &str) -> PathBuf {
     }
 }
 
+fn find_git_head(path: &Path) -> Option<PathBuf> {
+    let mut current = path;
+    loop {
+        let git_entry = current.join(".git");
+        if git_entry.is_dir() {
+            return Some(git_entry.join("HEAD"));
+        } else if git_entry.is_file() {
+            // Worktree: .git is a file containing "gitdir: <path>"
+            let contents = fs::read_to_string(&git_entry).ok()?;
+            let gitdir = contents
+                .lines()
+                .find_map(|l| l.trim().strip_prefix("gitdir:"))?
+                .trim()
+                .to_string();
+            let gitdir_path = PathBuf::from(&gitdir);
+            let gitdir_abs = if gitdir_path.is_absolute() {
+                gitdir_path
+            } else {
+                current.join(&gitdir_path)
+            };
+            return Some(gitdir_abs.join("HEAD"));
+        }
+        current = current.parent()?;
+    }
+}
+
 /// Utility function to get the current branch of a git repository
 pub fn get_repository_branch(repo_path: &str) -> Option<String> {
-    let repo = Repository::open_ext(
-        repo_path,
-        git2::RepositoryOpenFlags::empty(),
-        vec![WORLD_TREES_PATH, SRC_PATH],
-    )
-    .ok()?;
-    let head = repo.head().ok()?;
-
-    if !head.is_branch() {
+    let git_head = find_git_head(Path::new(repo_path))?;
+    let contents = fs::read_to_string(&git_head).ok()?;
+    let branch = contents.trim().strip_prefix("ref: refs/heads/")?;
+    let branch = branch.trim();
+    if branch.is_empty() || branch == "master" || branch == "main" {
         return None;
     }
-
-    let branch_name = head.shorthand()?;
-    if branch_name == "master" || branch_name == "main" {
-        return None;
-    }
-
-    Some(branch_name.to_string())
+    Some(branch.to_string())
 }
 
 #[cfg(test)]

@@ -1,14 +1,11 @@
-#![allow(clippy::expect_used)]
-
 use clap::{ArgMatches, Args, Command, ValueEnum};
-use handlebars::Handlebars;
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
+use std::process;
 
 #[derive(ValueEnum, Clone, Debug)]
 pub enum Shell {
@@ -68,7 +65,10 @@ pub fn handle_from_matches(matches: &ArgMatches) {
         require_version,
     };
 
-    handle(&args).expect("Shell init should not fail")
+    if let Err(e) = handle(&args) {
+        eprintln!("Error: {e}");
+        process::exit(1);
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -117,35 +117,15 @@ fn get_exe_path() -> String {
     }
 }
 
-#[allow(clippy::result_large_err)] // Template error size is acceptable for this use case
-fn setup_handlebars() -> Result<Handlebars<'static>, handlebars::TemplateError> {
-    let mut handlebars = Handlebars::new();
-
-    // Register templates from embedded strings
-    handlebars.register_template_string("fish", include_str!("../../templates/fish.fish.hbs"))?;
-    handlebars.register_template_string("zsh", include_str!("../../templates/zsh.zsh.hbs"))?;
-
-    Ok(handlebars)
-}
-
-fn generate_shell_code(
-    args: &ShellInitArgs,
-) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let handlebars = setup_handlebars()?;
-
-    let template_name = match &args.shell {
-        Shell::Fish => "fish",
-        Shell::Zsh => "zsh",
+fn generate_shell_code(args: &ShellInitArgs) -> String {
+    let template = match &args.shell {
+        Shell::Fish => include_str!("../../templates/fish.fish.hbs"),
+        Shell::Zsh => include_str!("../../templates/zsh.zsh.hbs"),
     };
-
-    let data = json!({
-        "navigate_cmd": args.navigate,
-        "code_cmd": args.code,
-        "exe_path": get_exe_path()
-    });
-
-    let rendered = handlebars.render(template_name, &data)?;
-    Ok(rendered)
+    template
+        .replace("{{exe_path}}", &get_exe_path())
+        .replace("{{navigate_cmd}}", &args.navigate)
+        .replace("{{code_cmd}}", &args.code)
 }
 
 pub fn handle(args: &ShellInitArgs) -> io::Result<()> {
@@ -197,8 +177,7 @@ pub fn handle(args: &ShellInitArgs) -> io::Result<()> {
         ));
     }
 
-    let shell_code = generate_shell_code(args)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+    let shell_code = generate_shell_code(args);
 
     io::stdout().write_all(shell_code.as_bytes())?;
     Ok(())

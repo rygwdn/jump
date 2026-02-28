@@ -1,7 +1,7 @@
-use git2::Repository;
 use regex::Regex;
 use serde::Serialize;
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 // Symbol constants
@@ -282,14 +282,85 @@ fn extract_github_info(input: &str) -> Option<(String, String)> {
     }
 }
 
+fn find_git_root(path: &Path) -> Option<PathBuf> {
+    let mut current = path;
+    loop {
+        let git_entry = current.join(".git");
+        if git_entry.exists() {
+            return Some(current.to_path_buf());
+        }
+        current = current.parent()?;
+    }
+}
+
+fn parse_origin_url(contents: &str) -> Option<String> {
+    let mut in_origin = false;
+    for line in contents.lines() {
+        let trimmed = line.trim();
+        if trimmed == r#"[remote "origin"]"# {
+            in_origin = true;
+            continue;
+        }
+        if in_origin {
+            if trimmed.starts_with('[') {
+                break;
+            }
+            if let Some(rest) = trimmed.strip_prefix("url") {
+                let rest = rest.trim_start();
+                if let Some(url) = rest.strip_prefix('=') {
+                    return Some(url.trim().to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+fn read_origin_url(workdir: &Path) -> Option<String> {
+    let git_path = workdir.join(".git");
+    let config_path = if git_path.is_dir() {
+        git_path.join("config")
+    } else {
+        // Worktree: .git is a file containing "gitdir: <path>"
+        let contents = fs::read_to_string(&git_path).ok()?;
+        let gitdir = contents
+            .lines()
+            .find_map(|l| l.trim().strip_prefix("gitdir:"))?
+            .trim()
+            .to_string();
+        let gitdir_path = PathBuf::from(&gitdir);
+        // Resolve relative paths
+        let gitdir_abs = if gitdir_path.is_absolute() {
+            gitdir_path
+        } else {
+            workdir.join(&gitdir_path)
+        };
+        // Check for commondir to find main repo config
+        let commondir_file = gitdir_abs.join("commondir");
+        if commondir_file.exists() {
+            let commondir = fs::read_to_string(&commondir_file).ok()?;
+            let commondir = commondir.trim();
+            let common_path = PathBuf::from(commondir);
+            let common_abs = if common_path.is_absolute() {
+                common_path
+            } else {
+                gitdir_abs.join(common_path)
+            };
+            common_abs.join("config")
+        } else {
+            gitdir_abs.join("config")
+        }
+    };
+    let contents = fs::read_to_string(&config_path).ok()?;
+    parse_origin_url(&contents)
+}
+
 fn check_git_path(path: &Path) -> Option<ShortPath> {
-    // Try to open a git repository at the given path or any parent
-    let repo = Repository::discover(path).ok()?;
-    let repo_path = repo.workdir().unwrap_or_else(|| repo.path());
-    let repo_path_str = repo_path.to_string_lossy();
+    let workdir = find_git_root(path)?;
+    let workdir_str = workdir.to_string_lossy();
 
     // Get relative path within the repository
-    let rel_path = path.strip_prefix(repo_path).ok()?;
+    let rel_path = path.strip_prefix(&workdir).ok()?;
     let rel_path_str = rel_path.to_string_lossy();
 
     // Split into segments for the remaining path
@@ -304,7 +375,7 @@ fn check_git_path(path: &Path) -> Option<ShortPath> {
     };
 
     // Check if this is a GitHub repository path (highest priority for GitHub type)
-    if let Some((owner, repo)) = extract_github_info(&repo_path_str) {
+    if let Some((owner, repo)) = extract_github_info(&workdir_str) {
         return Some(ShortPath {
             path_type: PathType::GitHub { owner, repo },
             segments,
@@ -312,22 +383,20 @@ fn check_git_path(path: &Path) -> Option<ShortPath> {
     }
 
     // Check if the remote origin is a GitHub repository (second priority)
-    if let Ok(remote) = repo.find_remote("origin") {
-        if let Some(url) = remote.url() {
-            if let Some((owner, repo_name)) = extract_github_info(url) {
-                return Some(ShortPath {
-                    path_type: PathType::GitHubRemote {
-                        owner,
-                        repo: repo_name,
-                    },
-                    segments,
-                });
-            }
+    if let Some(url) = read_origin_url(&workdir) {
+        if let Some((owner, repo_name)) = extract_github_info(&url) {
+            return Some(ShortPath {
+                path_type: PathType::GitHubRemote {
+                    owner,
+                    repo: repo_name,
+                },
+                segments,
+            });
         }
     }
 
     // Regular git repository (fallback)
-    let repo_name = repo_path
+    let repo_name = workdir
         .file_name()
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_default();

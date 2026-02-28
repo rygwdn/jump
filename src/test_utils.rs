@@ -62,7 +62,6 @@ pub mod scorer_test_utils {
 }
 
 pub mod test_env {
-    use git2;
     use std::fs;
     use std::path::PathBuf;
     use tempfile::TempDir;
@@ -109,8 +108,11 @@ pub mod test_env {
             let repo_path = self.src_path.join(name);
             fs::create_dir_all(&repo_path).expect("Failed to create repo dir");
 
-            // Use git2 to initialize repository
-            git2::Repository::init(&repo_path).expect("Failed to init git repo");
+            std::process::Command::new("git")
+                .arg("init")
+                .arg(&repo_path)
+                .output()
+                .expect("Failed to run git init");
 
             repo_path
         }
@@ -120,8 +122,11 @@ pub mod test_env {
             let full_path = self.src_path.join(path);
             fs::create_dir_all(&full_path).expect("Failed to create nested repo dir");
 
-            // Use git2 to initialize repository
-            git2::Repository::init(&full_path).expect("Failed to init git repo");
+            std::process::Command::new("git")
+                .arg("init")
+                .arg(&full_path)
+                .output()
+                .expect("Failed to run git init");
 
             full_path
         }

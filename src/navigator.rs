@@ -209,14 +209,22 @@ mod tests {
         fs::create_dir_all(&main_src).unwrap();
         fs::create_dir_all(&alt_src).unwrap();
 
-        // Create repos in both locations using git2
+        // Create repos in both locations using git init
         let repo1_path = main_src.join("repo1");
         fs::create_dir_all(&repo1_path).unwrap();
-        git2::Repository::init(&repo1_path).expect("Failed to init repo1");
+        std::process::Command::new("git")
+            .arg("init")
+            .arg(&repo1_path)
+            .output()
+            .expect("Failed to run git init for repo1");
 
         let repo2_path = alt_src.join("repo2");
         fs::create_dir_all(&repo2_path).unwrap();
-        git2::Repository::init(&repo2_path).expect("Failed to init repo2");
+        std::process::Command::new("git")
+            .arg("init")
+            .arg(&repo2_path)
+            .output()
+            .expect("Failed to run git init for repo2");
 
         // Write custom config with no world path and multiple src paths
         let custom_config = format!(

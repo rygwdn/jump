@@ -79,6 +79,14 @@ impl FrecencyDb {
             CREATE TABLE IF NOT EXISTS metadata (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS shortpath_cache (
+                directory TEXT PRIMARY KEY,
+                head_file_path TEXT,
+                head_mtime INTEGER,
+                shortpath_json TEXT,
+                cached_at INTEGER NOT NULL
             );",
         )?;
 

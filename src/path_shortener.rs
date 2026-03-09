@@ -1,5 +1,5 @@
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -15,7 +15,7 @@ pub const SYMBOL_ROOT: &str = "/";
 // Lazy static regex for world trees pattern
 static WORLD_TREES_RE: OnceLock<Regex> = OnceLock::new();
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PathType {
     WorldTree { worktree: String, project: String },
     GitHub { owner: String, repo: String },
@@ -53,7 +53,7 @@ impl ComponentBuilder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ShortPath {
     pub path_type: PathType,
     pub segments: Vec<String>, // All path segments after the prefix (unshortened)

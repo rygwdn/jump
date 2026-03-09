@@ -14,7 +14,10 @@ pub fn expand_path(path: &str) -> PathBuf {
     }
 }
 
-fn find_git_head(path: &Path) -> Option<PathBuf> {
+/// Walk up the directory tree to find the HEAD file for the nearest git repository.
+/// For regular repos returns `<root>/.git/HEAD`.
+/// For worktrees resolves the `gitdir:` pointer and returns that worktree's HEAD.
+pub fn find_git_head(path: &Path) -> Option<PathBuf> {
     let mut current = path;
     loop {
         let git_entry = current.join(".git");
@@ -43,7 +46,33 @@ fn find_git_head(path: &Path) -> Option<PathBuf> {
 /// Utility function to get the current branch of a git repository
 pub fn get_repository_branch(repo_path: &str) -> Option<String> {
     let git_head = find_git_head(Path::new(repo_path))?;
-    let contents = fs::read_to_string(&git_head).ok()?;
+    read_branch_from_head(&git_head)
+}
+
+/// Like [`get_repository_branch`] but uses `cache` to skip the directory-tree
+/// walk that locates the HEAD file.  On a cache miss the HEAD path is stored so
+/// subsequent calls for the same directory are fast.
+///
+/// `cache` is a `ShortpathCache` — passed in so callers can share a single
+/// instance across many repos without re-opening the database each time.
+pub fn get_repository_branch_cached(
+    repo_path: &str,
+    cache: &crate::shortpath_cache::ShortpathCache,
+) -> Option<String> {
+    let repo = Path::new(repo_path);
+    let git_head = match cache.get_head_file(repo) {
+        Some(p) => p,
+        None => {
+            let found = find_git_head(repo)?;
+            cache.set_head_file(repo, &found);
+            found
+        }
+    };
+    read_branch_from_head(&git_head)
+}
+
+fn read_branch_from_head(git_head: &Path) -> Option<String> {
+    let contents = fs::read_to_string(git_head).ok()?;
     let branch = contents.trim().strip_prefix("ref: refs/heads/")?;
     let branch = branch.trim();
     if branch.is_empty() || branch == "master" || branch == "main" {

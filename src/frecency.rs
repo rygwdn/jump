@@ -1,6 +1,6 @@
 use crate::config::ConfigManager;
 use crate::utils::expand_path;
-use rusqlite::{params, Connection, Result as SqlResult};
+use rusqlite::{params, Connection, OpenFlags, Result as SqlResult};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -10,6 +10,13 @@ const HOUR: u64 = 3600;
 const DAY: u64 = 24 * HOUR;
 const WEEK: u64 = 7 * DAY;
 const DAYS_TO_KEEP: i64 = 30;
+
+/// Minimum seconds between access-only (visit_count=0) DB writes per path.
+/// Visits (visit_count>0) are always recorded immediately.
+const THROTTLE_SECS: i64 = 60;
+
+/// How often (in seconds) to run the old-record cleanup DELETE.
+const PRUNE_INTERVAL_SECS: i64 = 6 * HOUR as i64;
 
 pub struct FrecencyDb {
     db_path: PathBuf,
@@ -46,7 +53,13 @@ impl FrecencyDb {
         Self { db_path }
     }
 
-    /// Open database connection and ensure schema exists
+    /// Return the path to the SQLite database file.
+    pub fn db_path(&self) -> &Path {
+        &self.db_path
+    }
+
+    /// Open a read-write connection and ensure the full schema exists.
+    /// Used for reads (get_raw_scores) and writes when throttle is bypassed.
     fn open_db(&self) -> SqlResult<Connection> {
         let conn = Connection::open(&self.db_path)?;
 
@@ -61,14 +74,87 @@ impl FrecencyDb {
                 PRIMARY KEY (path, date)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_frecency_date ON frecency(date);",
+            CREATE INDEX IF NOT EXISTS idx_frecency_date ON frecency(date);
+
+            CREATE TABLE IF NOT EXISTS metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );",
         )?;
 
         Ok(conn)
     }
 
+    /// Open a read-only connection. Fails if the DB file does not exist.
+    /// Used for the throttle check before deciding whether to write.
+    fn open_db_readonly(&self) -> SqlResult<Connection> {
+        Connection::open_with_flags(
+            &self.db_path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY
+                | OpenFlags::SQLITE_OPEN_URI
+                | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )
+    }
+
+    /// Check whether a write is needed (throttle) and whether pruning is due.
+    /// Opens a read-only connection; returns (needs_write, needs_prune).
+    /// Falls back to (true, true) if the read-only open fails.
+    fn check_needs_update(
+        &self,
+        canonical_path: &str,
+        visit_count: i64,
+        now: i64,
+        today: i64,
+    ) -> (bool, bool) {
+        let conn = match self.open_db_readonly() {
+            Ok(c) => c,
+            // Can't open read-only (e.g., WAL files not initialised yet) — assume write needed
+            Err(_) => return (true, true),
+        };
+
+        // Access-only updates are throttled; visits always go through
+        let is_throttled = if visit_count == 0 {
+            let last_accessed: Option<i64> = conn
+                .query_row(
+                    "SELECT MAX(last_accessed) FROM frecency WHERE path = ?1 AND date = ?2",
+                    params![canonical_path, today],
+                    |row| row.get(0),
+                )
+                .ok()
+                .flatten();
+
+            last_accessed
+                .map(|la| now - la < THROTTLE_SECS)
+                .unwrap_or(false)
+        } else {
+            false
+        };
+
+        if is_throttled {
+            return (false, false);
+        }
+
+        // Only bother checking prune if we're going to write anyway
+        let needs_prune = {
+            let last_pruned: Option<i64> = conn
+                .query_row(
+                    "SELECT CAST(value AS INTEGER) FROM metadata WHERE key = 'last_pruned'",
+                    [],
+                    |row| row.get(0),
+                )
+                .ok()
+                .flatten();
+
+            // Prune if never done, or interval has elapsed; also handle missing table gracefully
+            last_pruned
+                .map(|lp| now - lp > PRUNE_INTERVAL_SECS)
+                .unwrap_or(true)
+        };
+
+        (true, needs_prune)
+    }
+
     pub fn visit(&self, path: &str, visit_count: i64) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = self.open_db()?;
         let canonical_path = Path::new(path)
             .canonicalize()
             .unwrap_or_else(|_| PathBuf::from(path))
@@ -77,6 +163,21 @@ impl FrecencyDb {
 
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
         let today = now / DAY as i64;
+
+        // Phase 1: read-only throttle + prune check (skips write lock entirely when not needed)
+        let (needs_write, needs_prune) = if self.db_path.exists() {
+            self.check_needs_update(&canonical_path, visit_count, now, today)
+        } else {
+            // DB doesn't exist yet — always write, always initialise schema
+            (true, false)
+        };
+
+        if !needs_write {
+            return Ok(());
+        }
+
+        // Phase 2: open read-write (schema init / migration handled here via IF NOT EXISTS)
+        let conn = self.open_db()?;
 
         conn.execute(
             "INSERT INTO frecency (path, date, visits, last_accessed)
@@ -87,10 +188,16 @@ impl FrecencyDb {
             params![canonical_path, today, visit_count, now],
         )?;
 
-        conn.execute(
-            "DELETE FROM frecency WHERE date < ?1",
-            params![today - DAYS_TO_KEEP],
-        )?;
+        if needs_prune {
+            conn.execute(
+                "DELETE FROM frecency WHERE date < ?1",
+                params![today - DAYS_TO_KEEP],
+            )?;
+            conn.execute(
+                "INSERT OR REPLACE INTO metadata (key, value) VALUES ('last_pruned', ?1)",
+                params![now.to_string()],
+            )?;
+        }
 
         Ok(())
     }
@@ -195,7 +302,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db = FrecencyDb::with_path(temp_dir.path().join("test.db"));
 
-        // Visit paths
+        // Visit paths (visits always bypass throttle)
         db.visit("/test/path1", 1).unwrap();
         db.visit("/test/path1", 1).unwrap();
         db.visit("/test/path2", 1).unwrap();
@@ -295,6 +402,7 @@ mod tests {
         let db = FrecencyDb::with_path(temp_dir.path().join("test.db"));
 
         // Multiple visits to same path on same day should accumulate
+        // Visits (count > 0) bypass the throttle
         db.visit("/test/path", 1).unwrap();
         db.visit("/test/path", 1).unwrap();
         db.visit("/test/path", 1).unwrap();
@@ -333,6 +441,132 @@ mod tests {
 
         let canonical_score = scores.get(&canonical_path).unwrap_or(&0.0);
         assert!(canonical_score > &0.0);
+    }
+
+    #[test]
+    fn test_throttle_skips_access_only_updates() {
+        let temp_dir = TempDir::new().unwrap();
+        let db = FrecencyDb::with_path(temp_dir.path().join("test.db"));
+
+        // First access-only update always goes through (no prior record)
+        db.visit("/test/path", 0).unwrap();
+
+        let scores1 = db.get_raw_scores().unwrap();
+        let last_accessed1 = {
+            let conn = db.open_db().unwrap();
+            conn.query_row(
+                "SELECT last_accessed FROM frecency WHERE path = '/test/path'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap()
+        };
+
+        // Immediate second access-only update should be throttled (same second)
+        db.visit("/test/path", 0).unwrap();
+
+        let scores2 = db.get_raw_scores().unwrap();
+        let last_accessed2 = {
+            let conn = db.open_db().unwrap();
+            conn.query_row(
+                "SELECT last_accessed FROM frecency WHERE path = '/test/path'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap()
+        };
+
+        // last_accessed should not change (throttled)
+        assert_eq!(
+            last_accessed1, last_accessed2,
+            "Throttled access should not update last_accessed"
+        );
+        // Score should be unchanged (still 0 for access-only)
+        assert_eq!(
+            scores1.get("/test/path"),
+            scores2.get("/test/path"),
+            "Throttled access should not change score"
+        );
+    }
+
+    #[test]
+    fn test_throttle_does_not_block_visits() {
+        let temp_dir = TempDir::new().unwrap();
+        let db = FrecencyDb::with_path(temp_dir.path().join("test.db"));
+
+        // Visits (count > 0) always bypass the throttle
+        db.visit("/test/path", 1).unwrap();
+        let scores1 = db.get_raw_scores().unwrap();
+        let score1 = scores1.get("/test/path").copied().unwrap_or(0.0);
+
+        // Immediate second visit — should NOT be throttled
+        db.visit("/test/path", 1).unwrap();
+        let scores2 = db.get_raw_scores().unwrap();
+        let score2 = scores2.get("/test/path").copied().unwrap_or(0.0);
+
+        assert!(
+            score2 > score1,
+            "Second visit should increase score: {score1} -> {score2}"
+        );
+    }
+
+    #[test]
+    fn test_prune_runs_periodically() {
+        let temp_dir = TempDir::new().unwrap();
+        let db = FrecencyDb::with_path(temp_dir.path().join("test.db"));
+
+        // Insert an old record directly to simulate stale data
+        {
+            let conn = db.open_db().unwrap();
+            let old_date = -100_i64; // way in the past
+            conn.execute(
+                "INSERT INTO frecency (path, date, visits, last_accessed) VALUES (?1, ?2, 5, 0)",
+                params!["/old/path", old_date],
+            )
+            .unwrap();
+        }
+
+        // Verify old record exists
+        {
+            let conn = db.open_db().unwrap();
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM frecency WHERE path = '/old/path'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(count, 1, "Old record should exist before prune");
+        }
+
+        // Visit with no prior last_pruned → prune should run
+        db.visit("/test/path", 1).unwrap();
+
+        // Verify old record was pruned
+        {
+            let conn = db.open_db().unwrap();
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM frecency WHERE path = '/old/path'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(count, 0, "Old record should be pruned after first write");
+        }
+
+        // Verify last_pruned was recorded
+        {
+            let conn = db.open_db().unwrap();
+            let last_pruned: Option<String> = conn
+                .query_row(
+                    "SELECT value FROM metadata WHERE key = 'last_pruned'",
+                    [],
+                    |row| row.get(0),
+                )
+                .ok();
+            assert!(last_pruned.is_some(), "last_pruned should be set in metadata");
+        }
     }
 
     #[test]
@@ -400,7 +634,7 @@ mod tests {
             "First visit should create a positive score"
         );
 
-        // Second visit
+        // Second visit (visits bypass throttle)
         frecency_db.visit(test_path, 1).unwrap();
         let second_raw_scores = frecency_db.get_raw_scores().unwrap();
         let second_score = second_raw_scores.get(test_path).copied().unwrap_or(0.0);

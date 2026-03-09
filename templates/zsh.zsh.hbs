@@ -2,12 +2,12 @@
 
 # Hook to record directory visits (when PWD changes)
 function __jumpr_visit() {
-    \command {{exe_path}} update-frecency --visit -- "$PWD" 2>/dev/null
+    \command {{exe_path}} update-frecency --visit -- "$PWD" 2>/dev/null &!
 }
 
 # Hook to update access time (when prompt is rendered)
 function __jumpr_access() {
-    \command {{exe_path}} update-frecency -- "$PWD" 2>/dev/null
+    \command {{exe_path}} update-frecency -- "$PWD" 2>/dev/null &!
 }
 
 # Initialize hooks

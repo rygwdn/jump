@@ -27,6 +27,9 @@ pub use scorer::OptimalScorer;
 pub use shell_init::{get_shell_init, ShellCommandConfig, CODE_CONFIG, NAVIGATION_CONFIG};
 pub use shortpath_cache::ShortpathCache;
 pub use src_provider::SrcProvider;
-pub use utils::{expand_path, find_git_head, get_repository_branch, get_repository_branch_cached};
+pub use utils::{
+    expand_path, find_git_head, find_git_root_and_head, get_repository_branch,
+    get_repository_branch_cached,
+};
 pub use worktree_collector::WorktreeCollector;
 pub use worktree_provider::WorktreeProvider;

@@ -14,17 +14,20 @@ pub fn expand_path(path: &str) -> PathBuf {
     }
 }
 
-/// Walk up the directory tree to find the HEAD file for the nearest git repository.
-/// For regular repos returns `<root>/.git/HEAD`.
-/// For worktrees resolves the `gitdir:` pointer and returns that worktree's HEAD.
-pub fn find_git_head(path: &Path) -> Option<PathBuf> {
+/// Walk up the directory tree, returning both the git working directory (root) and
+/// the path to the HEAD file for the nearest git repository.
+///
+/// For regular repos: `(root, root/.git/HEAD)`.
+/// For worktrees: `(worktree_root, <resolved-gitdir>/HEAD)`.
+pub fn find_git_root_and_head(path: &Path) -> Option<(PathBuf, PathBuf)> {
     let mut current = path;
     loop {
         let git_entry = current.join(".git");
         if git_entry.is_dir() {
-            return Some(git_entry.join("HEAD"));
+            return Some((current.to_path_buf(), git_entry.join("HEAD")));
         } else if git_entry.is_file() {
             // Worktree: .git is a file containing "gitdir: <path>"
+            let git_root = current.to_path_buf();
             let contents = fs::read_to_string(&git_entry).ok()?;
             let gitdir = contents
                 .lines()
@@ -37,10 +40,17 @@ pub fn find_git_head(path: &Path) -> Option<PathBuf> {
             } else {
                 current.join(&gitdir_path)
             };
-            return Some(gitdir_abs.join("HEAD"));
+            return Some((git_root, gitdir_abs.join("HEAD")));
         }
         current = current.parent()?;
     }
+}
+
+/// Walk up the directory tree to find the HEAD file for the nearest git repository.
+/// For regular repos returns `<root>/.git/HEAD`.
+/// For worktrees resolves the `gitdir:` pointer and returns that worktree's HEAD.
+pub fn find_git_head(path: &Path) -> Option<PathBuf> {
+    find_git_root_and_head(path).map(|(_, head)| head)
 }
 
 /// Utility function to get the current branch of a git repository

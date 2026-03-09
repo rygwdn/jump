@@ -81,12 +81,13 @@ impl FrecencyDb {
                 value TEXT NOT NULL
             );
 
-            CREATE TABLE IF NOT EXISTS shortpath_cache (
-                directory TEXT PRIMARY KEY,
-                head_file_path TEXT,
-                head_mtime INTEGER,
-                shortpath_json TEXT,
-                cached_at INTEGER NOT NULL
+            DROP TABLE IF EXISTS shortpath_cache;
+
+            CREATE TABLE IF NOT EXISTS project_path_type_cache (
+                git_root        TEXT PRIMARY KEY,
+                path_type_json  TEXT NOT NULL,
+                head_file_path  TEXT,
+                cached_at       INTEGER NOT NULL
             );",
         )?;
 
@@ -573,7 +574,10 @@ mod tests {
                     |row| row.get(0),
                 )
                 .ok();
-            assert!(last_pruned.is_some(), "last_pruned should be set in metadata");
+            assert!(
+                last_pruned.is_some(),
+                "last_pruned should be set in metadata"
+            );
         }
     }
 

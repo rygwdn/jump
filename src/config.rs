@@ -128,9 +128,10 @@ fn try_load_config(path: &PathBuf) -> Result<JumprConfig, String> {
 
     if let (Some(base), Some(overrides)) = (merged.as_object_mut(), file_value.as_object()) {
         for (key, value) in overrides {
-            if !value.is_null() {
-                base.insert(key.clone(), value.clone());
-            }
+            // Always apply the value from the file, including explicit nulls.
+            // Null in the file means the user intentionally unset the field
+            // (e.g. `"world_path": null` to disable world-tree scanning).
+            base.insert(key.clone(), value.clone());
         }
     }
 

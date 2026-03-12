@@ -82,13 +82,38 @@ pub fn get_repository_branch_cached(
 }
 
 fn read_branch_from_head(git_head: &Path) -> Option<String> {
-    let contents = fs::read_to_string(git_head).ok()?;
-    let branch = contents.trim().strip_prefix("ref: refs/heads/")?;
-    let branch = branch.trim();
-    if branch.is_empty() || branch == "master" || branch == "main" {
-        return None;
+    match fs::read_to_string(git_head) {
+        Ok(contents) => {
+            let trimmed = contents.trim();
+            if let Some(branch) = trimmed.strip_prefix("ref: refs/heads/") {
+                let branch = branch.trim();
+                // `.invalid` is the sentinel git writes into the text HEAD file
+                // for reftable repos so that naïve text readers get an obviously
+                // wrong value.  The real branch lives in the reftable.
+                if branch == ".invalid" {
+                    let gitdir = git_head.parent()?;
+                    return crate::git_reftable::read_head_from_reftable(gitdir);
+                }
+                if branch.is_empty() || branch == "master" || branch == "main" {
+                    return None;
+                }
+                return Some(branch.to_string());
+            }
+            // File exists but is not a symbolic ref (detached HEAD, raw OID, or
+            // other unrecognised content).  Don't fall through to reftable.
+            if !trimmed.is_empty() {
+                return None;
+            }
+            // File is empty — fall through to the reftable reader.
+            let gitdir = git_head.parent()?;
+            crate::git_reftable::read_head_from_reftable(gitdir)
+        }
+        Err(_) => {
+            // HEAD text file does not exist — try reftable format.
+            let gitdir = git_head.parent()?;
+            crate::git_reftable::read_head_from_reftable(gitdir)
+        }
     }
-    Some(branch.to_string())
 }
 
 #[cfg(test)]
@@ -121,6 +146,27 @@ mod tests {
         // Test relative path
         let expanded = expand_path("relative/path");
         assert_eq!(expanded, PathBuf::from("relative/path"));
+    }
+
+    #[test]
+    fn test_reftable_sentinel_falls_back_to_reftable() {
+        use crate::git_reftable::tests::make_reftable_gitdir;
+        use std::fs;
+
+        // Create a gitdir with a `.invalid` sentinel HEAD file and a reftable
+        // that contains the real branch.
+        let tmp = tempfile::TempDir::new().unwrap();
+        let gitdir = tmp.path();
+
+        // Write the sentinel text HEAD
+        fs::write(gitdir.join("HEAD"), "ref: refs/heads/.invalid\n").unwrap();
+
+        // Create a real reftable pointing at feature-xyz
+        make_reftable_gitdir(gitdir, "refs/heads/feature-xyz");
+
+        let head_path = gitdir.join("HEAD");
+        let branch = read_branch_from_head(&head_path);
+        assert_eq!(branch, Some("feature-xyz".to_string()));
     }
 
     #[test]

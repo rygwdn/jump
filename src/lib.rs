@@ -2,6 +2,7 @@ pub mod candidate;
 pub mod candidate_provider;
 pub mod config;
 pub mod frecency;
+pub mod git_reftable;
 pub mod navigator;
 pub mod path_shortener;
 pub mod provider;
